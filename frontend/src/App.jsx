@@ -1,18 +1,31 @@
-// frontend/src/App.jsx
+import React from 'react';
 import Upload from './upload';
-import './App.css';
+import './index.css';
 
-function App() {
+export default function App() {
   return (
-    <div className="App">
-      <header className="navy-header">
-        <h1>IMInsight Image Analysis System</h1>
-      </header>
-      <main className="content-container">
-        <Upload />
+    <div className="app-root">
+      <Header />
+      <main className="main-container">
+        <Upload label="Naval Image Intelligence" />
       </main>
     </div>
   );
 }
 
-export default App;
+function Header() {
+  return (
+    <header className="header-bar">
+      <div className="logo-side">
+        <img src="/wesee.png" alt="WeSee Logo Left" className="logo-img" />
+      </div>
+      <div className="title-block">
+        <h1>IMInsight</h1>
+        <p className="subtitle">Naval Image Intelligence</p>
+      </div>
+      <div className="logo-side">
+        <img src="/wesee.png" alt="WeSee Logo Right" className="logo-img" />
+      </div>
+    </header>
+  );
+}

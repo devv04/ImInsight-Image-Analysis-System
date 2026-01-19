@@ -1,18 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
-import GeoTIFFPreview from './GeoTIFFPreview';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import React, { useState, useEffect, useRef } from 'react';
 
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-});
-
-function Upload() {
+export default function Upload({ label }) {
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
@@ -23,24 +11,27 @@ function Upload() {
   const missionLogRef = useRef(null);
 
   const handleFileChange = (event) => {
-    const selectedFile = event.target.files[0];
-    if (!selectedFile) return;
+    const selected = event.target.files[0];
+    if (!selected) return;
 
-    setFile(selectedFile);
+    setFile(selected);
     setAnalysisResult(null);
     setZoom(1);
 
-    const fileType = selectedFile.name.split('.').pop().toLowerCase();
-    if (['tiff', 'geotiff'].includes(fileType)) {
+    const ext = selected.name.split('.').pop().toLowerCase();
+    if (['tiff', 'geotiff'].includes(ext)) {
       setIsGeoTIFF(true);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
-    } else if (['jpg', 'jpeg', 'png'].includes(fileType)) {
+    } else if (['jpg', 'jpeg', 'png'].includes(ext)) {
       setIsGeoTIFF(false);
-      setPreviewUrl(URL.createObjectURL(selectedFile));
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(URL.createObjectURL(selected));
     } else {
       setIsGeoTIFF(false);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
-      alert('Unsupported file format. Accepted formats: JPG, PNG, GeoTIFF');
+      alert('Unsupported file format. Accepted: JPG, PNG, GeoTIFF.');
     }
   };
 
@@ -48,26 +39,27 @@ function Upload() {
     if (!file) return;
     setIsLoading(true);
     setProgress(0);
+    setAnalysisResult(null);
 
     const formData = new FormData();
     formData.append('file', file);
 
-    const interval = setInterval(() => {
-      setProgress((prev) => (prev >= 90 ? 90 : prev + 10));
-    }, 500);
+    const fakeInterval = setInterval(() => {
+      setProgress((p) => (p >= 90 ? 90 : p + 10));
+    }, 300);
 
     try {
-      const response = await fetch('/upload', {
+      const res = await fetch('/upload', {
         method: 'POST',
         body: formData,
       });
-      const result = await response.json();
-      setAnalysisResult(result);
-    } catch (error) {
-      console.error('Upload failed:', error);
-      setAnalysisResult({ error: 'Analysis Failed: Unable to process the file' });
+      const json = await res.json();
+      setAnalysisResult(json);
+    } catch (err) {
+      console.error('Upload error:', err);
+      setAnalysisResult({ error: 'Upload/analysis failed.' });
     } finally {
-      clearInterval(interval);
+      clearInterval(fakeInterval);
       setProgress(100);
       setIsLoading(false);
     }
@@ -79,137 +71,199 @@ function Upload() {
     };
   }, [previewUrl]);
 
-  const handleClose = () => {
-    setAnalysisResult(null);
+  useEffect(() => {
+    if (analysisResult && missionLogRef.current) {
+      missionLogRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [analysisResult]);
+
+  const getAnomalies = () => {
+    if (!analysisResult) return [];
+    if (Array.isArray(analysisResult.anomalies)) return analysisResult.anomalies;
+    if (Array.isArray(analysisResult.anomalies_detected?.anomalies_detected))
+      return analysisResult.anomalies_detected.anomalies_detected;
+    return [];
+  };
+
+  const totalDetected = () => {
+    const summary = analysisResult?.detections?.summary;
+    if (!summary) return 0;
+    return Object.values(summary).reduce((a, b) => a + b, 0);
   };
 
   return (
-    <div className="upload-container">
-      <div className="mission-brief">
-        <h2>File Upload</h2>
-        <label htmlFor="file-upload">Select File:</label>
-        <input
-          id="file-upload"
-          type="file"
-          accept=".jpg,.jpeg,.png,.tiff,.geotiff"
-          onChange={handleFileChange}
-        />
-        <button onClick={handleUpload} disabled={!file || isLoading}>
-          Analyze File
-        </button>
-        {isLoading && (
-          <div className="progress-bar-container">
-            <div className="progress-bar" style={{ width: `${progress}%` }}></div>
-          </div>
-        )}
+    <div className="upload-card card">
+      <div className="card-header">
+        <div className="label">
+          <div className="dot" />
+          <h2>{label}</h2>
+        </div>
+        <div className="actions">
+          <input
+            id="single-file"
+            type="file"
+            accept=".jpg,.jpeg,.png,.tiff,.geotiff"
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+          />
+          <label htmlFor="single-file" className="btn small">
+            Choose Image
+          </label>
+          <button
+            onClick={handleUpload}
+            disabled={!file || isLoading}
+            className="btn primary"
+          >
+            {isLoading ? 'Analyzing...' : 'Analyze'}
+          </button>
+        </div>
       </div>
 
-      <div className="preview-section">
-        {isGeoTIFF && file && <GeoTIFFPreview file={file} />}
-
-        {previewUrl && (
-          <div className="image-preview">
-            <h3>Image Preview</h3>
-            <div className="zoom-controls">
-              <button onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}>Zoom Out</button>
-              <button onClick={() => setZoom((z) => Math.min(3, z + 0.1))}>Zoom In</button>
-            </div>
-            <div style={{ overflow: 'auto', display: 'flex', justifyContent: 'center', border: '1px solid #FFD700', borderRadius: '8px', padding: '10px' }}>
-              <img
-                src={previewUrl}
-                alt="Preview"
-                style={{
-                  transform: `scale(${zoom})`,
-                  transformOrigin: 'top left',
-                  transition: 'transform 0.2s ease-in-out',
-                  objectFit: 'contain',
-                  maxWidth: '100%'
-                }}
-              />
-            </div>
+      {isLoading && (
+        <div className="progress-wrapper">
+          <div className="progress-bar">
+            <div className="fill" style={{ width: `${progress}%` }} />
           </div>
-        )}
+        </div>
+      )}
 
-        {analysisResult && (
-          <div className="mission-log" ref={missionLogRef}>
-            <h3>Mission Log: Intelligence Report</h3>
-            {analysisResult.error ? (
-              <p style={{ color: 'red' }}>{analysisResult.error}</p>
-            ) : (
-              <>
-                <p><strong>File:</strong> {analysisResult.file_info.filename}</p>
-                <p><strong>Size:</strong> {analysisResult.file_info.size[0]}x{analysisResult.file_info.size[1]}</p>
-                <p><strong>Format:</strong> {analysisResult.file_info.format}</p>
-
-                <div style={{ marginTop: '15px' }}>
-                  <p><strong>Caption:</strong> {analysisResult.caption?.text || 'No caption available'}</p>
-                  <p><strong>Object Count:</strong> {analysisResult.caption?.object_count || 'N/A'}</p>
-                  <p><strong>Confidence:</strong> {analysisResult.caption?.confidence || 'N/A'}</p>
-                  <p><strong>Classification:</strong> {analysisResult.classification?.label || 'N/A'} ({(analysisResult.classification?.confidence * 100 || 0).toFixed(1)}%)</p>
-                </div>
-
-                {analysisResult.detections?.summary && (
-                  <div style={{
-                    marginTop: '15px',
-                    padding: '10px',
-                    background: '#1e1e2f',
-                    borderRadius: '10px',
-                    fontSize: '0.95rem'
-                  }}>
-                    <strong>Object Detection Summary:</strong>
-                    <ul style={{ marginTop: '10px' }}>
-                      {Object.entries(analysisResult.detections.summary).map(([label, count], idx) => (
-                        <li key={idx}>
-                          • <strong>{label.charAt(0).toUpperCase() + label.slice(1)}</strong>: {count}
-                        </li>
-                      ))}
-                    </ul>
-                    <p style={{ marginTop: '8px' }}>
-                      <strong>Total Detected Objects:</strong> {Object.values(analysisResult.detections.summary).reduce((a, b) => a + b, 0)}
-                    </p>
-                  </div>
-                )}
-
-                {analysisResult.anomalies_detected && (
-                  <div style={{
-                    marginTop: '20px',
-                    padding: '10px',
-                    background: '#3c2c3e',
-                    borderRadius: '10px'
-                  }}>
-                    <strong>Anomaly Detection:</strong>
-                    <ul>
-                      {analysisResult.anomalies_detected.anomalies_detected.map((anomaly, idx) => (
-                        <li key={idx}>• {anomaly}</li>
-                      ))}
-                    </ul>
-                    <p>Total Anomalies: {analysisResult.anomalies_detected.count}</p>
-                  </div>
-                )}
-
-                {analysisResult.naval_assessment && (
-                  <div style={{
-                    marginTop: '20px',
-                    padding: '10px',
-                    background: '#2c3e50',
-                    borderRadius: '10px'
-                  }}>
-                    <strong>Naval Assessment:</strong>
-                    <p>Status: {analysisResult.naval_assessment.status}</p>
-                    <p>Priority: {analysisResult.naval_assessment.priority}</p>
-                    <p>Recommendation: {analysisResult.naval_assessment.recommendation}</p>
-                  </div>
-                )}
-              </>
-            )}
-            <button onClick={handleClose} style={{ marginTop: '10px' }}>
-              Close
+      <div className="preview-zone">
+        <div className="image-preview">
+          <h3>Preview</h3>
+          <div className="zoom-controls">
+            <button
+              onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))}
+              disabled={!previewUrl}
+            >
+              -
+            </button>
+            <span>{Math.round(zoom * 100)}%</span>
+            <button
+              onClick={() => setZoom((z) => Math.min(3, +(z + 0.1).toFixed(2)))}
+              disabled={!previewUrl}
+            >
+              +
             </button>
           </div>
+          <div className="preview-wrapper fixed-preview">
+            {previewUrl ? (
+              <img
+                src={previewUrl}
+                alt="upload preview"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  transform: `scale(${zoom})`,
+                  transformOrigin: 'center center',
+                  borderRadius: '8px',
+                }}
+              />
+            ) : (
+              <div className="placeholder">
+                <p>No image selected</p>
+                <p style={{ fontSize: '0.8rem', marginTop: 4 }}>
+                  Choose an image to preview
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+        {isGeoTIFF && file && (
+          <div className="geotiff-placeholder">
+            <p>GeoTIFF preview would render here.</p>
+          </div>
         )}
       </div>
+
+      {analysisResult && (
+        <div className="mission-log" ref={missionLogRef}>
+          <h3>Mission Log: Intelligence Report</h3>
+          {analysisResult.error ? (
+            <p className="error">{analysisResult.error}</p>
+          ) : (
+            <>
+              {(analysisResult.caption || analysisResult.classification) && (
+                <div className="section table-box">
+                  <strong>Caption & Classification</strong>
+                  <table>
+                    <tbody>
+                      <tr>
+                        <th>Caption</th>
+                        <td>{analysisResult.caption?.text || '—'}</td>
+                      </tr>
+
+                     <tr>
+                       <th>Classification</th>
+                       <td>{analysisResult.classification?.label || 'N/A'}</td>
+                     </tr>
+
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {analysisResult.detections?.summary && (
+                <div className="section summary-box">
+                  <strong>Detection Summary:</strong>
+                  <ul>
+                    {Object.entries(analysisResult.detections.summary).map(([lbl, cnt]) => (
+                      <li key={lbl}>
+                        {lbl.charAt(0).toUpperCase() + lbl.slice(1)}: {cnt}
+                      </li>
+                    ))}
+                  </ul>
+                  <p>
+                    <strong>Total:</strong> {totalDetected()}
+                  </p>
+                </div>
+              )}
+
+              {getAnomalies().length > 0 && (
+                <div className="section anomaly-box">
+                  <strong>Anomalies:</strong>
+                  <ul>
+                    {getAnomalies().map((a, i) => {
+                      if (typeof a === 'string') {
+                        return <li key={i}>{a}</li>;
+                      } else if (a && typeof a === 'object') {
+                        return (
+                          <li key={i}>
+                            {a.description || JSON.stringify(a)}
+                            {a.person_count !== undefined && ` (Persons: ${a.person_count})`}
+                            {a.severity && ` [Severity: ${a.severity}]`}
+                          </li>
+                        );
+                      } else {
+                        return <li key={i}>{String(a)}</li>;
+                      }
+                    })}
+                  </ul>
+                  <p>
+                    <strong>Count:</strong>{' '}
+                    {analysisResult.anomalies_detected?.count ?? getAnomalies().length}
+                  </p>
+                </div>
+              )}
+
+              {analysisResult.naval_assessment && (
+                <div className="section assessment-box">
+                  <strong>Naval Assessment:</strong>
+                  <p>Status: {analysisResult.naval_assessment.status || 'N/A'}</p>
+                  <p>Priority: {analysisResult.naval_assessment.priority || 'N/A'}</p>
+                  <p>
+                    Recommendation:{' '}
+                    {analysisResult.naval_assessment.recommendation || 'N/A'}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+          <button className="btn secondary" onClick={() => setAnalysisResult(null)}>
+            Close
+          </button>
+        </div>
+      )}
     </div>
   );
 }
-
-export default Upload;

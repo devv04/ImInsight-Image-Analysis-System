@@ -1,62 +1,40 @@
-# backend/model/clip_utils.py
-import clip
 import torch
+import open_clip
 from PIL import Image
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model, preprocess = clip.load("ViT-B/32", device=device)
+# Load once
+_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+_MODEL_NAME = "ViT-B-32"
+_PRETRAINED = "openai"  # standard weights
 
-def classify_image(image_path, labels):
-    image = preprocess(Image.open(image_path)).unsqueeze(0).to(device)
-    text = clip.tokenize(labels).to(device)
+_model, _, _preprocess = open_clip.create_model_and_transforms(_MODEL_NAME, pretrained=_PRETRAINED)
+_tokenizer = open_clip.get_tokenizer(_MODEL_NAME)
+_model.to(_device)
+_model.eval()
 
-    with torch.no_grad():
-        logits_per_image, _ = model(image, text)
-        probs = logits_per_image.softmax(dim=-1).cpu().numpy()
+def classify_image(image_path, label_list, top_k=1):
+    """
+    Zero-shot classification. Returns best label/confidence from label_list.
+    """
+    try:
+        image = _preprocess(Image.open(image_path).convert("RGB")).unsqueeze(0).to(_device)  # [1,C,H,W]
+        text_tokens = _tokenizer(label_list).to(_device)  # [len(labels), ...]
+        with torch.no_grad():
+            image_features = _model.encode_image(image)
+            text_features = _model.encode_text(text_tokens)
 
-    best_index = probs[0].argmax()
-    return {
-        "label": labels[best_index],
-        "confidence": round(float(probs[0][best_index]), 3)
-    }
+            # Normalize for cosine similarity
+            image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+            text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 
-def generate_caption(image_path):
-    prompts = [
-        "a photo of a satellite image of a city",
-        "a close-up of a person",
-        "a cat sitting on the ground",
-        "an aerial view of a forest",
-        "a scenic landscape",
-        "a crowded street view",    
-        "a photo of a mountain",
-        "a photo of a beach",
-        "a photo of a river",
-        "a photo of a desert",
-        "a photo of a building",
-        "a photo of a car",
-        "a photo of a dog",
-        "a photo of a plane",
-        "a photo of a train",
-        "a photo of a ship",
-        "a photo of a world map",
-        "a photo of a city skyline",
-        "a photo of a park",
-        "a photo of a garden",
-        "a photo of a bridge",
-        "a photo of a highway",
-        "a photo of a street",
-        "a photo of a monument",    
-        "a photo of a statue",
-        "a photo of a sculpture",
-        "a photo of a fountain",
-        "a photo of a tower",
-        "a photo of a castle",
-        "a photo of a church",
-        "a photo of a temple",
-        "a photo of a mosque",
-        "a photo of a synagogue",
-        "a photo of group of people",
+            logits_per_image = (image_features @ text_features.T)  # [1, num_labels]
+            probs = logits_per_image.softmax(dim=-1)[0]  # [num_labels]
 
-
-    ]
-    return classify_image(image_path, prompts)
+        top_probs, top_idxs = probs.topk(top_k)
+        best_idx = top_idxs[0].item()
+        best_label = label_list[best_idx]
+        confidence = float(top_probs[0].item())
+        return {"label": best_label, "confidence": confidence}
+    except Exception as e:
+        # graceful fallback
+        return {"label": "Unknown", "confidence": 0.0}

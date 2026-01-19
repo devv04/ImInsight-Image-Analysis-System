@@ -1,192 +1,293 @@
-/* Global Reset and Layout */
-html, body, #root {
-  height: 100%;
+:root {
+  --bg: #f5f8fa; /* light neutral background */
+  --card: #ffffff;
+  --primary: #003459; /* deep navy */
+  --accent: #0a9396;  /* teal */
+  --highlight: #ee9b00; /* saffron */
+  --text: #1f2d3a;
+  --muted: #6b7a8f;
+  --radius: 14px;
+  --shadow: 0 14px 40px rgba(0, 52, 89, 0.08);
+}
+
+/* Global Layout */
+body, html, #root {
   margin: 0;
   padding: 0;
-  font-family: 'Poppins', sans-serif; /* Sleek new font */
-  background-color: #1A2A44;
-  color: #FFFFFF;
-  overflow: hidden;
+  background: var(--bg);
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  min-height: 100%;
 }
 
-/* Fullscreen Upload Container */
-.upload-container {
-  height: 100vh;
-  width: 100vw;
-  padding: 20px;
-  box-sizing: border-box;
-  background-color: #1A2A44;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-color: #FFD700 #1A2A44;
-  scrollbar-width: thin;
+.app-root {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
 }
 
-.upload-container::-webkit-scrollbar {
-  width: 8px;
-}
-.upload-container::-webkit-scrollbar-track {
-  background: #1A2A44;
-}
-.upload-container::-webkit-scrollbar-thumb {
-  background-color: #FFD700;
-  border-radius: 4px;
+.main-container {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 /* Header */
-.navy-header {
-  text-align: center;
-  padding: 20px;
-  background-color: #1A2A44;
-  border-bottom: 2px solid #FFD700;
+.header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--card);
+  padding: 14px 24px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.navy-header h1 {
+.logo-side {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.logo-img {
+  height: 80px;
+  width: auto;
+  object-fit: contain;
+}
+
+.title-block {
+  flex: 2;
+  text-align: center;
+}
+
+.title-block h1 {
   margin: 0;
-  font-size: 32px;
-  color: #FFD700;
-  font-weight: 700;
-  letter-spacing: 1px;
+  font-size: 1.9rem;
+  color: var(--primary);
+  font-weight: 800;
 }
 
-/* Mission Brief */
-.mission-brief {
-  margin-bottom: 20px;
+.subtitle {
+  margin: 4px 0 0;
+  font-size: 0.7rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 
-.mission-brief h2 {
-  color: #FFD700;
-  font-size: 22px;
-  margin-bottom: 15px;
-  text-align: center;
+/* Upload Card */
+.upload-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
-.mission-brief label {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 600;
+.card-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
 }
 
-.mission-brief input[type="file"] {
-  display: block;
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #FFD700;
-  border-radius: 4px;
-  background-color: #1A2A44;
-  color: #FFFFFF;
+.label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.mission-brief button {
-  background-color: #FFD700;
-  color: #1A2A44;
+.label .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--highlight);
+}
+
+.label h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  color: var(--primary);
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.btn {
   border: none;
-  padding: 10px 20px;
-  border-radius: 4px;
-  font-weight: bold;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: 600;
   cursor: pointer;
-  margin-top: 12px;
+  transition: 0.2s ease;
 }
 
-.mission-brief button:disabled {
-  background-color: #A9A9A9;
+.btn.small {
+  background: #f0f4f8;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  font-size: 0.85rem;
+}
+
+.btn.primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn.secondary {
+  background: #f1f5f9;
+  color: var(--text);
+  border: 1px solid #d1d9e6;
+}
+
+.btn.primary:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* Progress Bar */
-.progress-bar-container {
-  margin-top: 12px;
-  width: 100%;
-  background-color: #1A2A44;
-  border: 1px solid #FFD700;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
+/* Progress */
 .progress-bar {
+  background: rgba(0, 61, 91, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
   height: 10px;
-  background-color: #FFD700;
-  transition: width 0.2s ease-in-out;
+}
+.progress-bar .fill {
+  background: var(--accent);
+  height: 100%;
+  width: 0%;
+  transition: width 0.2s ease;
 }
 
-/* Image Preview & Zoom */
-.preview-section {
-  margin-top: 30px;
+/* Preview */
+.preview-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
 }
 
-.image-preview h3,
-.geotiff-preview h3 {
-  font-size: 18px;
-  color: #FFD700;
-  margin-bottom: 10px;
+.image-preview h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--primary);
   text-align: center;
-}
-
-.image-preview img {
-  border: 1px solid #FFD700;
-  border-radius: 8px;
-  max-width: 100%;
-  transition: transform 0.2s ease-in-out;
 }
 
 .zoom-controls {
-  text-align: center;
-  margin-bottom: 10px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  margin-top: 6px;
 }
 
 .zoom-controls button {
-  margin: 0 6px;
-  padding: 6px 14px;
-  background-color: #FFD700;
-  color: #1A2A44;
+  background: var(--accent);
+  color: #fff;
   border: none;
-  border-radius: 4px;
-  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
   cursor: pointer;
+  font-weight: 600;
 }
-
-/* GeoTIFF Map Preview */
-.geotiff-preview .map-container {
-  height: 400px;
-  border: 2px solid #FFD700;
-  border-radius: 10px;
+.fixed-preview {
+  width: 100%;
+  max-width: 1000px; /* wider for more length coverage */
+  height: 450px; /* slightly taller for better aspect ratio */
+  background: #f0f4f8;
+  border: 2px dashed var(--highlight);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
-  margin-top: 20px;
+  margin: 0 auto; /* center the preview box */
 }
 
-/* Mission Log */
+.fixed-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+
+/* Result Sections */
 .mission-log {
-  margin-top: 30px;
-  padding: 20px;
-  background-color: #2c2c3e;
+  padding: 18px 22px;
+  background: #f7f9fb;
   border-radius: 12px;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
-  overflow-y: auto;
-  max-height: 400px;
+  box-shadow: var(--shadow);
+  border: 1px solid #dbe3ea;
+  color: var(--text);
 }
 
 .mission-log h3 {
-  color: #FFD700;
-  font-size: 20px;
-  margin-bottom: 15px;
-  text-align: center;
+  margin: 0 0 12px;
+  font-size: 1.2rem;
+  color: var(--primary);
 }
 
-.mission-log ul {
-  padding-left: 20px;
+.section {
+  margin-top: 12px;
 }
 
-.mission-log li {
-  margin-bottom: 5px;
+.summary-box {
+  background: rgba(10, 147, 150, 0.1);
+  padding: 10px;
+  border-radius: 8px;
 }
 
-.mission-log p {
-  color: #DDD;
+.anomaly-box {
+  background: rgba(238, 155, 0, 0.08);
+  padding: 10px;
+  border-radius: 8px;
 }
 
-/* Leaflet Popup */
-.leaflet-popup-content-wrapper {
-  background-color: #2A4066;
-  color: #FFD700;
-  border-radius: 5px;
+.assessment-box {
+  background: rgba(0, 61, 91, 0.06);
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.table-box {
+  background: rgba(10, 147, 150, 0.08);
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.table-box table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-box th, .table-box td {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+  text-align: left;
+}
+
+.table-box th {
+  color: var(--primary);
+  font-weight: 600;
+  width: 40%;
+}
+
+.table-box td {
+  color: var(--text);
+}
+
+/* Error text */
+.error {
+  color: #c0392b;
 }
