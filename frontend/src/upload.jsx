@@ -49,7 +49,8 @@ export default function Upload({ label }) {
     }, 300);
 
     try {
-      const res = await fetch('/upload', {
+      const API_URL = import.meta.env.VITE_API_URL || '';
+      const res = await fetch(`${API_URL}/upload`, {
         method: 'POST',
         body: formData,
       });

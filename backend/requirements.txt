@@ -7,3 +7,4 @@ transformers
 ultralytics
 opencv-python
 open_clip_torch
+gunicorn
