@@ -1,0 +1,9 @@
+Flask
+Flask-Cors
+Pillow
+torch
+torchvision
+transformers
+ultralytics
+opencv-python
+open_clip_torch

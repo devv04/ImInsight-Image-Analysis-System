@@ -91,6 +91,38 @@ export default function Upload({ label }) {
     return Object.values(summary).reduce((a, b) => a + b, 0);
   };
 
+  const renderBoundingBoxes = () => {
+    if (!analysisResult?.detections?.objects_detected || !analysisResult?.file_info?.size) return null;
+    const [origW, origH] = analysisResult.file_info.size;
+    
+    return analysisResult.detections.objects_detected.map((obj, i) => {
+        const [x1, y1, x2, y2] = obj.bbox;
+        const left = (x1 / origW) * 100 + '%';
+        const top = (y1 / origH) * 100 + '%';
+        const width = ((x2 - x1) / origW) * 100 + '%';
+        const height = ((y2 - y1) / origH) * 100 + '%';
+        
+        return (
+            <div key={i} style={{
+                position: 'absolute',
+                left, top, width, height,
+                border: '2px solid #ff4d4f',
+                backgroundColor: 'rgba(255, 77, 79, 0.15)',
+                pointerEvents: 'none',
+                zIndex: 10
+            }}>
+                <span style={{
+                    backgroundColor: '#ff4d4f', color: 'white', fontSize: '10px',
+                    position: 'absolute', top: 0, left: 0, padding: '2px 4px',
+                    transform: 'translateY(-100%)', whiteSpace: 'nowrap', borderRadius: '4px 4px 0 0'
+                }}>
+                    {obj.label} {obj.confidence}
+                </span>
+            </div>
+        );
+    });
+  };
+
   return (
     <div className="upload-card card">
       <div className="card-header">
@@ -147,18 +179,31 @@ export default function Upload({ label }) {
           </div>
           <div className="preview-wrapper fixed-preview">
             {previewUrl ? (
-              <img
-                src={previewUrl}
-                alt="upload preview"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
+              <div style={{ 
+                  position: 'relative', 
+                  width: '100%', 
+                  height: '100%', 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  alignItems: 'center',
                   transform: `scale(${zoom})`,
-                  transformOrigin: 'center center',
-                  borderRadius: '8px',
-                }}
-              />
+                  transformOrigin: 'center center'
+              }}>
+                <div style={{ position: 'relative', display: 'inline-block', maxWidth: '100%', maxHeight: '100%' }}>
+                  <img
+                    src={previewUrl}
+                    alt="upload preview"
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      objectFit: 'contain',
+                      borderRadius: '8px',
+                      display: 'block'
+                    }}
+                  />
+                  {renderBoundingBoxes()}
+                </div>
+              </div>
             ) : (
               <div className="placeholder">
                 <p>No image selected</p>

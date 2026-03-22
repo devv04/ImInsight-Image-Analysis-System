@@ -11,10 +11,10 @@ ALLOWED_CLASSES = {
 
 # 🚀 Load YOLOv8m model
 try:
-    model = YOLO("yolov8m.pt")
+    model = YOLO("yolov8x.pt")
 except Exception as e:
     model = None
-    print("Failed to load YOLOv8m:", e)
+    print("Failed to load YOLOv8x:", e)
 
 def detect_objects(image_path, conf_threshold=0.4, iou_threshold=0.6):
     try:

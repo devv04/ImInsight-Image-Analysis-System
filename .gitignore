@@ -63,3 +63,6 @@ __pycache__/
 *.zip
 *.log
 segmentation.py
+
+# Ignore uploads
+backend/static/uploads/
