@@ -17,7 +17,7 @@
 
 ---
 
-## 🛠️ Setup Instructions
+## 🛠️ Setup Instructions'
 
 ### 1. Backend Integration (Python/Flask)
 The backend utilizes PyTorch, Transformers, and Ultralytics YOLO. It requires a virtual environment to manage dependencies safely.
