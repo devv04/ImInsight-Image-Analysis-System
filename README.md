@@ -1,6 +1,6 @@
 # ImInsight Image Analysis System
 
-**ImInsight** is an AI-powered image analysis and surveillance dashboard designed to perform advanced reconnaissance, military, and naval visual intelligence. It combines several state-of-the-art machine learning models into a unified interface for captioning, classification, object detection, and anomaly flagging.
+**ImInsight** is an AI-powered image analysis and surveillance dashboard designed to perform advanced reconnaissance, military, and naval visual intelligence. It combines several state-of-the-art machine learning models into a unified interface for captioning, classification, object detection, and anomaly flagging...
 
 ## 🚀 Features
 
