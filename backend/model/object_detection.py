@@ -9,17 +9,25 @@ ALLOWED_CLASSES = {
     "suitcase", "aircraft carrier", "rifle", "submarine", "military vehicle"
 }
 
-# 🚀 Load YOLOv8m model
-try:
-    model = YOLO("yolov8x.pt")
-except Exception as e:
-    model = None
-    print("Failed to load YOLOv8x:", e)
+_model = None
+
+def get_yolo_model():
+    global _model
+    if _model is None:
+        try:
+            _model = YOLO("yolov8n.pt")  # Lightweight Nano model for low RAM environments
+        except Exception as e:
+            print("Failed to load YOLOv8n:", e)
+            _model = None
+    return _model
+
 
 def detect_objects(image_path, conf_threshold=0.4, iou_threshold=0.6):
     try:
+        model = get_yolo_model()
         if model is None:
             raise Exception("YOLO model not loaded properly.")
+
 
         results = model.predict(
             source=image_path,

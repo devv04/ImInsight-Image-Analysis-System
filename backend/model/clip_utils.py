@@ -2,26 +2,36 @@ import torch
 import open_clip
 from PIL import Image
 
-# Load once
 _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 _MODEL_NAME = "ViT-B-32"
-_PRETRAINED = "openai"  # standard weights
+_PRETRAINED = "openai"
 
-_model, _, _preprocess = open_clip.create_model_and_transforms(_MODEL_NAME, pretrained=_PRETRAINED)
-_tokenizer = open_clip.get_tokenizer(_MODEL_NAME)
-_model.to(_device)
-_model.eval()
+_model = None
+_preprocess = None
+_tokenizer = None
+
+def get_clip_model():
+    global _model, _preprocess, _tokenizer
+    if _model is None:
+        _model, _, _preprocess = open_clip.create_model_and_transforms(_MODEL_NAME, pretrained=_PRETRAINED)
+        _tokenizer = open_clip.get_tokenizer(_MODEL_NAME)
+        _model.to(_device)
+        _model.eval()
+    return _model, _preprocess, _tokenizer
+
 
 def classify_image(image_path, label_list, top_k=1):
     """
     Zero-shot classification. Returns best label/confidence from label_list.
     """
     try:
-        image = _preprocess(Image.open(image_path).convert("RGB")).unsqueeze(0).to(_device)  # [1,C,H,W]
-        text_tokens = _tokenizer(label_list).to(_device)  # [len(labels), ...]
+        model, preprocess, tokenizer = get_clip_model()
+        image = preprocess(Image.open(image_path).convert("RGB")).unsqueeze(0).to(_device)  # [1,C,H,W]
+        text_tokens = tokenizer(label_list).to(_device)  # [len(labels), ...]
         with torch.no_grad():
-            image_features = _model.encode_image(image)
-            text_features = _model.encode_text(text_tokens)
+            image_features = model.encode_image(image)
+            text_features = model.encode_text(text_tokens)
+
 
             # Normalize for cosine similarity
             image_features = image_features / image_features.norm(dim=-1, keepdim=True)
