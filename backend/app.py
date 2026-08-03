@@ -22,6 +22,11 @@ CORS(app)
 UPLOAD_FOLDER = 'static/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+@app.route('/', methods=['GET'])
+def health_check():
+    return jsonify({'status': 'online', 'message': 'ImInsight AI Surveillance API is running.'})
+
+
 # Domain-specific label sets (for zero-shot classification)
 LABEL_SETS = {
     "ground": [
