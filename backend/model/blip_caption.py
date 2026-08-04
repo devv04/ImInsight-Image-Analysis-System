@@ -16,7 +16,16 @@ def generate_caption(image_path, prompt=None, style_prompt=None, max_new_tokens=
         with open(image_path, "rb") as f:
             data = f.read()
         
-        response = requests.post(API_URL, headers=headers, data=data, timeout=30)
+        import time
+        for attempt in range(3):
+            try:
+                response = requests.post(API_URL, headers=headers, data=data, timeout=30)
+                break
+            except requests.exceptions.RequestException as e:
+                print(f"BLIP API Connection attempt {attempt+1} failed: {e}")
+                time.sleep(1)
+        else:
+            return {"label": "Connection failed", "confidence": 0.0}
         
         if response.status_code == 503:
             print("BLIP Model is loading on HF...")
