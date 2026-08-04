@@ -11,7 +11,11 @@ def get_caption_model():
     global _processor, _model
     if _processor is None or _model is None:
         _processor = BlipProcessor.from_pretrained(MODEL_NAME, use_fast=True)
-        _model = BlipForConditionalGeneration.from_pretrained(MODEL_NAME)
+        raw_model = BlipForConditionalGeneration.from_pretrained(MODEL_NAME)
+        # Apply dynamic quantization to shrink model size by ~4x (allows running inside 512MB RAM)
+        _model = torch.quantization.quantize_dynamic(
+            raw_model, {torch.nn.Linear}, dtype=torch.qint8
+        )
         _model.to(_device)
         _model.eval()
     return _processor, _model

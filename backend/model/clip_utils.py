@@ -13,8 +13,12 @@ _tokenizer = None
 def get_clip_model():
     global _model, _preprocess, _tokenizer
     if _model is None:
-        _model, _, _preprocess = open_clip.create_model_and_transforms(_MODEL_NAME, pretrained=_PRETRAINED)
+        raw_model, _, _preprocess = open_clip.create_model_and_transforms(_MODEL_NAME, pretrained=_PRETRAINED)
         _tokenizer = open_clip.get_tokenizer(_MODEL_NAME)
+        # Apply dynamic quantization to shrink model size
+        _model = torch.quantization.quantize_dynamic(
+            raw_model, {torch.nn.Linear}, dtype=torch.qint8
+        )
         _model.to(_device)
         _model.eval()
     return _model, _preprocess, _tokenizer
