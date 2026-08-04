@@ -1,54 +1,46 @@
-import torch
-import open_clip
-from PIL import Image
+import os
+import requests
+import base64
 
-_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-_MODEL_NAME = "ViT-B-32"
-_PRETRAINED = "openai"
-
-_model = None
-_preprocess = None
-_tokenizer = None
-
-def get_clip_model():
-    global _model, _preprocess, _tokenizer
-    if _model is None:
-        raw_model, _, _preprocess = open_clip.create_model_and_transforms(_MODEL_NAME, pretrained=_PRETRAINED)
-        _tokenizer = open_clip.get_tokenizer(_MODEL_NAME)
-        # Apply dynamic quantization to shrink model size
-        _model = torch.quantization.quantize_dynamic(
-            raw_model, {torch.nn.Linear}, dtype=torch.qint8
-        )
-        _model.to(_device)
-        _model.eval()
-    return _model, _preprocess, _tokenizer
-
+# Hugging Face Zero-Shot Image Classification API
+API_URL = "https://api-inference.huggingface.co/models/openai/clip-vit-base-patch32"
 
 def classify_image(image_path, label_list, top_k=1):
     """
-    Zero-shot classification. Returns best label/confidence from label_list.
+    Zero-shot classification using Hugging Face Free Inference API.
     """
+    hf_token = os.environ.get("HF_API_TOKEN")
+    if not hf_token:
+        print("Warning: HF_API_TOKEN is not set.")
+        return {"label": "HF_API_TOKEN not set", "confidence": 0.0}
+
+    headers = {"Authorization": f"Bearer {hf_token}"}
+    
     try:
-        model, preprocess, tokenizer = get_clip_model()
-        image = preprocess(Image.open(image_path).convert("RGB")).unsqueeze(0).to(_device)  # [1,C,H,W]
-        text_tokens = tokenizer(label_list).to(_device)  # [len(labels), ...]
-        with torch.no_grad():
-            image_features = model.encode_image(image)
-            text_features = model.encode_text(text_tokens)
+        with open(image_path, "rb") as f:
+            image_data = base64.b64encode(f.read()).decode("utf-8")
+            
+        payload = {
+            "inputs": image_data,
+            "parameters": {"candidate_labels": label_list}
+        }
+        
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
+        
+        if response.status_code == 503:
+            # Model is loading on HF servers
+            print("CLIP Model is loading on HF...")
+            return {"label": "Model is warming up, try again in 10s", "confidence": 0.0}
+            
+        response.raise_for_status()
+        results = response.json()
+        
+        if isinstance(results, list) and len(results) > 0:
+            best = results[0]
+            return {"label": best.get("label", "Unknown"), "confidence": best.get("score", 0.0)}
+            
+        return {"label": "Unknown", "confidence": 0.0}
 
-
-            # Normalize for cosine similarity
-            image_features = image_features / image_features.norm(dim=-1, keepdim=True)
-            text_features = text_features / text_features.norm(dim=-1, keepdim=True)
-
-            logits_per_image = (image_features @ text_features.T)  # [1, num_labels]
-            probs = logits_per_image.softmax(dim=-1)[0]  # [num_labels]
-
-        top_probs, top_idxs = probs.topk(top_k)
-        best_idx = top_idxs[0].item()
-        best_label = label_list[best_idx]
-        confidence = float(top_probs[0].item())
-        return {"label": best_label, "confidence": confidence}
     except Exception as e:
-        # graceful fallback
+        print("CLIP API Error:", e)
         return {"label": "Unknown", "confidence": 0.0}
