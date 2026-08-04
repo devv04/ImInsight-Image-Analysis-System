@@ -1,48 +1,50 @@
-import os
-import requests
+import torch
+from transformers import BlipProcessor, BlipForConditionalGeneration
+from PIL import Image
 
-# Hugging Face Image Captioning API
-API_URL = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-base"
+MODEL_NAME = "Salesforce/blip-image-captioning-base"  # original BLIP, lightweight
+
+_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+_processor, _model = None, None
+
+def get_caption_model():
+    global _processor, _model
+    if _processor is None or _model is None:
+        _processor = BlipProcessor.from_pretrained(MODEL_NAME, use_fast=True)
+        raw_model = BlipForConditionalGeneration.from_pretrained(MODEL_NAME)
+        # Apply dynamic quantization to shrink model size by ~4x (allows running inside 512MB RAM)
+        _model = torch.quantization.quantize_dynamic(
+            raw_model, {torch.nn.Linear}, dtype=torch.qint8
+        )
+        _model.to(_device)
+        _model.eval()
+    return _processor, _model
 
 def generate_caption(image_path, prompt=None, style_prompt=None, max_new_tokens=50):
-    hf_token = os.environ.get("HF_API_TOKEN")
-    if not hf_token:
-        print("Warning: HF_API_TOKEN is not set.")
-        return {"label": "HF_API_TOKEN not set", "confidence": 0.0}
+    """
+    prompt / style_prompt: optional strings to influence how the caption is framed. 
+    If both provided, style_prompt takes precedence for prefixing.
+    """
+    processor, model = get_caption_model()
+    image = Image.open(image_path).convert("RGB")
 
-    headers = {"Authorization": f"Bearer {hf_token}"}
-    
-    try:
-        with open(image_path, "rb") as f:
-            data = f.read()
-        
-        import time
-        for attempt in range(3):
-            try:
-                response = requests.post(API_URL, headers=headers, data=data, timeout=30)
-                break
-            except requests.exceptions.RequestException as e:
-                print(f"BLIP API Connection attempt {attempt+1} failed: {e}")
-                time.sleep(1)
-        else:
-            return {"label": "Connection failed", "confidence": 0.0}
-        
-        if response.status_code == 503:
-            print("BLIP Model is loading on HF...")
-            return {"label": "Caption model warming up, try again in 10s", "confidence": 0.0}
-            
-        response.raise_for_status()
-        result = response.json()
-        
-        caption = result[0].get("generated_text", "").strip() if isinstance(result, list) else ""
+    inputs = processor(images=image, return_tensors="pt").to(_device)
 
-        # Apply prefix if given
-        prefix = style_prompt.strip() if style_prompt else (prompt.strip() if prompt else None)
-        if prefix:
-            caption = f"{prefix} {caption}"
+    with torch.no_grad():
+        generated_ids = model.generate(**inputs, max_new_tokens=max_new_tokens)
+        caption = processor.decode(generated_ids[0], skip_special_tokens=True).strip()
 
-        return {"label": caption, "confidence": None}
+    # Apply prefix if given (e.g., tactical summary or domain style)
+    prefix = None
+    if style_prompt:
+        prefix = style_prompt.strip()
+    elif prompt:
+        prefix = prompt.strip()
 
-    except Exception as e:
-        print("BLIP API Error:", e)
-        return {"label": "Caption generation failed.", "confidence": 0.0}
+    if prefix:
+        caption = f"{prefix} {caption}"
+
+    return {
+        "label": caption,
+        "confidence": None
+    }
